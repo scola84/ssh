@@ -7,10 +7,7 @@ export default class Connector extends Commander {
     super(options);
 
     this._connection = null;
-    this._reconnect = null;
-
     this.setConnection(options.connection);
-    this.setReconnect(options.reconnect);
   }
 
   setConnection(value = null) {
@@ -18,21 +15,15 @@ export default class Connector extends Commander {
     return this;
   }
 
-  setReconnect(value = false) {
-    this._reconnect = value;
-    return this;
-  }
-
   act(box, data, callback) {
     data = this.filter(box, data);
 
-    if (box.client) {
-      this._write(box, 'exit');
+    if (data.ssh.client) {
+      this._write(box, data, callback, 'exit');
     }
 
     if (this._connection === null) {
-      data = this.merge(box, data);
-      this.pass(box, data, callback);
+      this._next(box, data, callback);
     } else {
       this._connect(box, data, callback);
     }
@@ -46,19 +37,19 @@ export default class Connector extends Commander {
     });
 
     client.once('ready', () => {
-      box.client = client;
+      data.ssh.client = client;
 
-      box.client.shell((error, stream) => {
+      data.ssh.client.shell((error, stream) => {
         if (error) {
           this._error(box, data, callback, error);
           return;
         }
 
-        box.stream = stream;
+        data.ssh.stream = stream;
 
-        box.stream.once('exit', () => {
-          box.client.end();
-          delete box.client;
+        data.ssh.stream.once('exit', () => {
+          data.ssh.client.end();
+          delete data.ssh.client;
         });
 
         this._bind(box, data, callback);

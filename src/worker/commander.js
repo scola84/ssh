@@ -17,10 +17,12 @@ export default class Commander extends Worker {
     this._answers = null;
     this._command = null;
     this._description = null;
+    this._quiet = null;
 
     this.setAnswers(options.answers);
     this.setCommand(options.command);
     this.setDescription(options.description);
+    this.setQuiet(options.quiet);
   }
 
   setAnswers(value = null) {
@@ -38,64 +40,84 @@ export default class Commander extends Worker {
     return this;
   }
 
+  setQuiet(value = false) {
+    this._quiet = value;
+    return this;
+  }
+
   act(box, data, callback) {
     data = this.filter(box, data);
 
-    let command = this._command;
-
-    if (typeof command === 'function') {
-      command = command(box, data);
-    }
+    let command = this._resolve(this._command, box, data);
 
     if (Array.isArray(command)) {
       command = command.map((cmd) => {
-        return box.sudo === true ? 'sudo ' + cmd : cmd;
+        cmd = data.ssh.sudo === true ? 'sudo ' + cmd : cmd;
+        cmd = this._quiet === true ? cmd + ' > /dev/null' : cmd;
+        return cmd;
       }).join(' && ');
     } else {
-      command = box.sudo === true ? 'sudo ' + command : command;
+      command = data.ssh.sudo === true ? 'sudo ' + command : command;
+      command = this._quiet === true ? command + ' > /dev/null' : command;
     }
 
-    command = box.test === true ? '' : command;
-
     this._bind(box, data, callback, command);
-    this._write(box, command, callback);
+    this._write(box, data, callback, command);
   }
 
-  _answer(box, data, callback) {
-    if (this._answers === 'tty') {
-      this._answerTty(box, data);
+  decide(box, data) {
+    const decision = super.decide(box, data);
+
+    if (decision !== true) {
+      if (data.ssh.log === 'line') {
+        console.log();
+      }
+
+      this._logDescription(box, data, null);
+    }
+
+    return decision;
+  }
+
+  _answer(box, data, callback, line) {
+    const answers = this._resolve(this._answers, box, data, line);
+
+    if (answers === 'tty') {
+      this._answerTty(box, data, callback, line);
       return;
     }
 
-    let answer = null;
-
-    if (typeof this._answers === 'function') {
-      answer = this._answers(box, data);
-    }
-
-    if (Array.isArray(this._answers)) {
-      box.answers = box.answers || this._answers.slice();
-      answer = box.answers.shift();
-    }
-
-    if (typeof answer === 'undefined') {
-      this._error(box, data, callback,
-        new Error('Could not answer question'));
-    } else if (answer !== null) {
-      this._write(box, answer, callback);
+    if (answers !== null) {
+      this._write(box, data, callback, answers);
     }
   }
 
-  _answerSudo(box, line, callback) {
-    if (line.slice(0, 6) === '[sudo]') {
-      this._write(box, box.user.password, callback);
+  _answerSudo(box, data, callback, line) {
+    if (line === 'Sorry, try again.') {
+      if (data.ssh.user.password) {
+        this._error(box, data, callback,
+          new Error('Password on box is invalid'));
+      } else {
+        this._answerTty(box, data, callback, line);
+      }
+
+      return true;
+    }
+
+    if (line.match(/^\[sudo\] password for .+:$/) !== null) {
+      if (data.ssh.user.password) {
+        this._write(box, data, callback, data.ssh.user.password);
+      } else {
+        this._answerTty(box, data, callback, line);
+      }
+
       return true;
     }
 
     return false;
   }
 
-  _answerTty(box, data, callback) {
+  _answerTty(box, data, callback, line) {
     let write = true;
 
     const output = new Writable({
@@ -114,29 +136,30 @@ export default class Commander extends Worker {
       terminal: true
     });
 
-    tty.question(data + ' ', (answer) => {
-      this._write(box, answer, callback);
+    tty.question(line + ' ', (answer) => {
+      this._write(box, data, callback, answer);
       tty.close();
+      console.log();
     });
 
-    write = data.match(/password/) === null;
+    write = line.match(/password/) === null;
   }
 
   _bind(box, data, callback, command) {
-    box.lines = [];
+    data.ssh.lines = [];
 
-    box.stream.on('data', (line) => {
+    data.ssh.stream.on('data', (line) => {
       this._read(box, data, callback, command, line);
     });
   }
 
   _error(box, data, callback, error) {
     error.data = data;
-    this._logDescription(false);
+    this._logDescription(box, data, false);
     this.fail(box, error, callback);
   }
 
-  _logDescription(result) {
+  _logDescription(box, data, result) {
     if (this._description === null) {
       return;
     }
@@ -145,18 +168,21 @@ export default class Commander extends Worker {
       return;
     }
 
-    const format = result === true ?
-      '\x1b[32m✔ \x1b[0m%s' :
-      '\x1b[31m✖ \x1b[0m%s';
+    const map = {
+      false: '\x1b[31m✖',
+      null: ' ',
+      true: '\x1b[32m✔',
+    };
 
-    console.log(format, this._description);
+    console.log(map[String(result)] + ' \x1b[0m[%s] %s',
+      data.ssh.client && data.ssh.client.config.host, this._description);
   }
 
   _next(box, data, callback) {
-    data = this.merge(box, data, box.lines);
+    data = this.merge(box, data, data.ssh.lines);
 
-    this._unbind(box);
-    this._logDescription(true);
+    this._unbind(box, data);
+    this._logDescription(box, data, true);
 
     this.pass(box, data, callback);
   }
@@ -164,7 +190,7 @@ export default class Commander extends Worker {
   _read(box, data, callback, command, line) {
     line = String(line).trim();
 
-    if (this._answerSudo(box, line, callback) === true) {
+    if (this._answerSudo(box, data, callback, line) === true) {
       return;
     }
 
@@ -179,29 +205,42 @@ export default class Commander extends Worker {
     }
 
     if (line && line !== command) {
-      if (box.log === 'line') {
+      if (data.ssh.log === 'line') {
         console.log(line);
       }
 
       this.log('info', box, line, callback);
-      box.lines[box.lines.length] = line;
+      data.ssh.lines[data.ssh.lines.length] = line;
     }
 
     if (line.match(free) || line.match(mc) || line.match(q)) {
-      this._answer(box, line);
+      this._answer(box, data, callback, line);
     }
   }
 
-  _unbind(box) {
-    box.stream.removeAllListeners('data');
+  _resolve(fn, ...args) {
+    if (typeof fn === 'function') {
+      return this._resolve(fn(...args), ...args);
+    }
+
+    return fn;
   }
 
-  _write(box, data, callback) {
-    if (box.log === 'line') {
-      console.log(data);
+  _unbind(box, data) {
+    data.ssh.stream.removeAllListeners('data');
+  }
+
+  _write(box, data, callback, line) {
+    if (data.ssh.log === 'line') {
+      console.log();
+      console.log(line);
+      console.log();
     }
 
     this.log('info', box, data, callback);
-    box.stream.write(data + '\n');
+
+    line = data.ssh.test === true ? '' : line;
+
+    data.ssh.stream.write(line + '\n');
   }
 }

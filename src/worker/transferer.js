@@ -32,10 +32,10 @@ export default class Transferer extends Connector {
     }
 
     options = defaults({
-      hostname: box.client && box.client.config.host,
-      key: box.client && box.client.config.key,
-      port: box.client && box.client.config.port,
-      username: box.client && box.client.config.username
+      hostname: data.ssh.client && data.ssh.client.config.host,
+      key: data.ssh.client && data.ssh.client.config.key,
+      port: data.ssh.client && data.ssh.client.config.port,
+      username: data.ssh.client && data.ssh.client.config.username
     }, options);
 
     let local = this._local;
@@ -67,7 +67,7 @@ export default class Transferer extends Connector {
 
       data = this.merge(box, data, result);
 
-      this._logDescription(true);
+      this._logDescription(box, data, true);
       this.pass(box, data, callback);
     });
   }
