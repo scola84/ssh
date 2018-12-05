@@ -6,5 +6,10 @@
   "author": "M.C. van den Boogaart <scola@kvdb.name>",
   "license": "MIT",
   "main": "./index.js",
-  "jsnext:main": "./index.js"
+  "jsnext:main": "./index.js",
+  "dependencies": {
+    "@scola/worker": "^2.9.2",
+    "lodash-es": "^4.17.11",
+    "ssh2": "^0.6.1"
+  }
 }
