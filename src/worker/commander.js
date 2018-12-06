@@ -2,26 +2,16 @@ import { Worker } from '@scola/worker';
 import { Writable } from 'stream';
 import readline from 'readline';
 
-const logOptions = {
-  level: 0
-};
-
 export default class Commander extends Worker {
-  static setOptions(options) {
-    Object.assign(logOptions, options);
-  }
-
   constructor(options = {}) {
     super(options);
 
     this._answers = null;
     this._command = null;
-    this._description = null;
     this._quiet = null;
 
     this.setAnswers(options.answers);
     this.setCommand(options.command);
-    this.setDescription(options.description);
     this.setQuiet(options.quiet);
   }
 
@@ -63,20 +53,6 @@ export default class Commander extends Worker {
 
     this._bind(box, data, callback, command);
     this._write(box, data, callback, command);
-  }
-
-  decide(box, data) {
-    const decision = super.decide(box, data);
-
-    if (decision !== true) {
-      if (data.ssh.log === 'line') {
-        console.log();
-      }
-
-      this._logDescription(box, data, null);
-    }
-
-    return decision;
   }
 
   _answer(box, data, callback, line) {
@@ -155,35 +131,13 @@ export default class Commander extends Worker {
 
   _error(box, data, callback, error) {
     error.data = data;
-    this._logDescription(box, data, false);
     this.fail(box, error, callback);
-  }
-
-  _logDescription(box, data, result) {
-    if (this._description === null) {
-      return;
-    }
-
-    if (logOptions.level === 0) {
-      return;
-    }
-
-    const map = {
-      false: '\x1b[31m✖',
-      null: ' ',
-      true: '\x1b[32m✔',
-    };
-
-    console.log(map[String(result)] + ' \x1b[0m[%s] %s',
-      data.ssh.client && data.ssh.client.config.host, this._description);
   }
 
   _next(box, data, callback) {
     data = this.merge(box, data, data.ssh.lines);
 
     this._unbind(box, data);
-    this._logDescription(box, data, true);
-
     this.pass(box, data, callback);
   }
 
@@ -205,11 +159,7 @@ export default class Commander extends Worker {
     }
 
     if (line && line !== command) {
-      if (data.ssh.log === 'line') {
-        console.log(line);
-      }
-
-      this.log('info', box, line, callback);
+      this.log('info', box, data, callback, line);
       data.ssh.lines[data.ssh.lines.length] = line;
     }
 
@@ -231,16 +181,8 @@ export default class Commander extends Worker {
   }
 
   _write(box, data, callback, line) {
-    if (data.ssh.log === 'line') {
-      console.log();
-      console.log(line);
-      console.log();
-    }
-
-    this.log('info', box, data, callback);
-
+    this.log('info', box, data, callback, line);
     line = data.ssh.test === true ? '' : line;
-
     data.ssh.stream.write(line + '\n');
   }
 }
