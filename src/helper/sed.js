@@ -12,7 +12,7 @@ export default function sed(file, pattern, replacer, section) {
 
     if (typeof rpl === 'undefined') {
       rpl = ptn;
-      ptn = '#?' + ptn;
+      ptn = '#\\{0,\\}' + ptn;
       scn = null;
     }
 
