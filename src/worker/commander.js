@@ -9,10 +9,12 @@ export default class Commander extends Worker {
     this._answers = null;
     this._command = null;
     this._quiet = null;
+    this._sudo = null;
 
     this.setAnswers(options.answers);
     this.setCommand(options.command);
     this.setQuiet(options.quiet);
+    this.setSudo(options.sudo);
   }
 
   setAnswers(value = null) {
@@ -35,28 +37,53 @@ export default class Commander extends Worker {
     return this;
   }
 
+  setSudo(value = true) {
+    this._sudo = value;
+    return this;
+  }
+
   act(box, data, callback) {
     data = this.filter(box, data);
 
-    let command = this._resolve(this._command, box, data);
-
-    if (Array.isArray(command)) {
-      command = command.map((cmd) => {
-        cmd = data.ssh.sudo === true ? 'sudo ' + cmd : cmd;
-        cmd = this._quiet === true ? cmd + ' > /dev/null' : cmd;
-        return cmd;
-      }).join(' && ');
-    } else {
-      command = data.ssh.sudo === true ? 'sudo ' + command : command;
-      command = this._quiet === true ? command + ' > /dev/null' : command;
+    if (typeof data.ssh.stream === 'undefined') {
+      this.skip(box, data, callback);
+      return;
     }
+
+    const prefix = data.ssh.sudo === true && this._sudo === true ?
+      'sudo ' : '';
+
+    const postfix = this._quiet === true ?
+      ' > /dev/null' : '';
+
+    let command = this.resolve(this._command, box, data);
+    command = Array.isArray(command) ? command : [command];
+
+    command = command
+      .map((cmd) => prefix + cmd + postfix)
+      .join(' && ')
+      .trim();
 
     this._bind(box, data, callback, command);
     this._write(box, data, callback, command);
   }
 
-  _answer(box, data, callback, line) {
-    const answers = this._resolve(this._answers, box, data, line);
+  decide(box, data) {
+    const description = this.resolve(this._description,
+      box, data);
+
+    const regexp = new RegExp(box.commanders, 'i');
+
+    if (description.match(regexp) === null) {
+      return false;
+    }
+
+    return super.decide(box, data);
+  }
+
+  _answer(box, data, callback, line, command) {
+    const answers = this.resolve(this._answers,
+      box, data, line, command);
 
     if (answers === 'tty') {
       this._answerTty(box, data, callback, line);
@@ -81,10 +108,12 @@ export default class Commander extends Worker {
     }
 
     if (line.match(/^\[sudo\] password for .+:$/) !== null) {
-      if (data.ssh.user.password) {
-        this._write(box, data, callback, data.ssh.user.password);
+      const password = data.ssh.user.password;
+
+      if (password) {
+        this._write(box, data, callback, password, false);
       } else {
-        this._answerTty(box, data, callback, line);
+        this._answerTty(box, data, callback, line, false);
       }
 
       return true;
@@ -93,7 +122,7 @@ export default class Commander extends Worker {
     return false;
   }
 
-  _answerTty(box, data, callback, line) {
+  _answerTty(box, data, callback, line, log) {
     let write = true;
 
     const output = new Writable({
@@ -113,7 +142,7 @@ export default class Commander extends Worker {
     });
 
     tty.question(line + ' ', (answer) => {
-      this._write(box, data, callback, answer);
+      this._write(box, data, callback, answer, log);
       tty.close();
       console.log();
     });
@@ -148,7 +177,7 @@ export default class Commander extends Worker {
       return;
     }
 
-    const free = /:$/;
+    const free = /:( .+)?$/;
     const mc = /\? \[.+\]$/;
     const q = /\?$/;
     const prompt = /[$#]$/;
@@ -164,24 +193,19 @@ export default class Commander extends Worker {
     }
 
     if (line.match(free) || line.match(mc) || line.match(q)) {
-      this._answer(box, data, callback, line);
+      this._answer(box, data, callback, line, command);
     }
-  }
-
-  _resolve(fn, ...args) {
-    if (typeof fn === 'function') {
-      return this._resolve(fn(...args), ...args);
-    }
-
-    return fn;
   }
 
   _unbind(box, data) {
     data.ssh.stream.removeAllListeners('data');
   }
 
-  _write(box, data, callback, line) {
-    this.log('info', box, data, callback, line);
+  _write(box, data, callback, line, log = true) {
+    if (log === true) {
+      this.log('info', box, data, callback, line);
+    }
+
     line = data.ssh.test === true ? '' : line;
     data.ssh.stream.write(line + '\n');
   }
