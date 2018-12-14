@@ -1,3 +1,5 @@
+import escape from 'escape-string-regexp';
+
 export default function sed(file, pattern, replacer, section) {
   const items = Array.isArray(pattern) ? pattern : [
     [pattern, replacer, section]
@@ -12,9 +14,13 @@ export default function sed(file, pattern, replacer, section) {
 
     if (typeof rpl === 'undefined') {
       rpl = ptn;
-      ptn = '#\\{0,\\}' + ptn;
+      ptn = '#\\{0,\\}' + escape(ptn);
       scn = null;
     }
+
+    ptn = ptn.replace(/"/g, '\\\\\\"');
+    ptn = ptn.replace(/\\\?/g, '[?]');
+    rpl = rpl.replace(/"/g, '\\\\\\"');
 
     let check = '';
     let replace = '';
@@ -33,6 +39,6 @@ export default function sed(file, pattern, replacer, section) {
       append = `sed -i "$ a ${rpl}" ${file}`;
     }
 
-    return check + ' && sudo ' + replace + ' || sudo ' + append;
+    return check + ' && ' + replace + ' || ' + append;
   });
 }

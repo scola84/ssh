@@ -60,7 +60,11 @@ export default class Commander extends Worker {
     command = Array.isArray(command) ? command : [command];
 
     command = command
-      .map((cmd) => prefix + cmd + postfix)
+      .map((cmd) => {
+        return prefix +
+          cmd.replace(/( [&|]+ )/g, '$1' + prefix) +
+          postfix;
+      })
       .join(' && ')
       .trim();
 
