@@ -1,11 +1,11 @@
 import escape from 'escape-string-regexp';
 
 export default function sed(file, pattern, replacer, section) {
-  const items = Array.isArray(pattern) ? pattern : [
+  let items = Array.isArray(pattern) ? pattern : [
     [pattern, replacer, section]
   ];
 
-  return items.map((item) => {
+  items = items.map((item) => {
     if (Array.isArray(item) === false) {
       throw new Error('Item is not an array');
     }
@@ -41,4 +41,6 @@ export default function sed(file, pattern, replacer, section) {
 
     return check + ' && ' + replace + ' || ' + append;
   });
+
+  return items.join(' && ');
 }

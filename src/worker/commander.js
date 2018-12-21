@@ -27,11 +27,6 @@ export default class Commander extends Worker {
     return this;
   }
 
-  setDescription(value = null) {
-    this._description = value;
-    return this;
-  }
-
   setQuiet(value = false) {
     this._quiet = value;
     return this;
@@ -181,7 +176,7 @@ export default class Commander extends Worker {
       return;
     }
 
-    const free = /:( .+)?$/;
+    const free = /:( [^\\.]+)?$/;
     const mc = /\? \[.+\]$/;
     const q = /\?$/;
     const prompt = /[$#]$/;
