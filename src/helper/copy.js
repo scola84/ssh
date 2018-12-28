@@ -1,11 +1,15 @@
 import { readFileSync } from 'fs';
 import sprintf from 'sprintf-js';
 
-export default function copy(local, remote, options = {}) {
-  local = String(readFileSync(local));
-  local = local.replace(/"/g, '\\"');
-  local = local.replace(/\$/g, '\\$');
-  local = sprintf.sprintf(local, options);
+export default function copy(source, target, options = {}) {
+  if (source[0] === '/') {
+    return `cp ${source} ${target}`;
+  }
 
-  return `printf "${local}" | tee ${remote}`;
+  source = String(readFileSync(source));
+  source = source.replace(/"/g, '\\"');
+  source = source.replace(/\$/g, '\\$');
+  source = sprintf.sprintf(source, options);
+
+  return `printf "${source}" | tee ${target}`;
 }
