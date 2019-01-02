@@ -48,20 +48,18 @@ export default class Commander extends Worker {
     const prefix = data.ssh.sudo === true && this._sudo === true ?
       'sudo ' : '';
 
-    const postfix = this._quiet === true ?
-      ' > /dev/null' : '';
-
     let command = this.resolve(this._command, box, data);
     command = Array.isArray(command) ? command : [command];
 
     command = command
       .map((cmd) => {
         return prefix +
-          cmd.replace(/( [&|]+ )/g, '$1' + prefix) +
-          postfix;
+          cmd.replace(/( [&|]+ )/g, '$1' + prefix);
       })
       .join(' && ')
       .trim();
+
+    command = this._quiet ? `( ${command} ) &> /dev/null` : command;
 
     this._bind(box, data, callback, command);
     this._write(box, data, callback, command);
