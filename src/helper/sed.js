@@ -21,6 +21,7 @@ export default function sed(file, pattern, replacer, section) {
     ptn = ptn.replace(/"/g, '\\\\\\"');
     ptn = ptn.replace(/\\\?/g, '[?]');
     rpl = rpl.replace(/"/g, '\\\\\\"');
+    rpl = rpl.replace(/\//g, '\\\\/');
 
     let check = '';
     let replace = '';
@@ -30,13 +31,13 @@ export default function sed(file, pattern, replacer, section) {
       const sb = `/^\\[${scn}\\]/,/^\\[/{/^\\[/b; `;
       const se = '}';
 
-      check = `sed -n "/\\[${scn}\\]/,/\\[/p" ${file} | grep "^${ptn}$"`;
-      replace = `sed -i "${sb}s/^${ptn}$/${rpl}/${se}" ${file}`;
-      append = `sed -i "/\\[${scn}\\]/ a ${rpl}" ${file}`;
+      check = `sed -n -E "/\\[${scn}\\]/,/\\[/p" ${file} | grep -E "^${ptn}$"`;
+      replace = `sed -i -E "${sb}s/^${ptn}$/${rpl}/${se}" ${file}`;
+      append = `sed -i -E "/\\[${scn}\\]/ a ${rpl}" ${file}`;
     } else {
-      check = `grep "^${ptn}$" ${file}`;
-      replace = `sed -i "s/^${ptn}$/${rpl}/" ${file}`;
-      append = `sed -i "$ a ${rpl}" ${file}`;
+      check = `grep -E "^${ptn}$" ${file}`;
+      replace = `sed -i -E "s/^${ptn}$/${rpl}/" ${file}`;
+      append = `sed -i -E "$ a ${rpl}" ${file}`;
     }
 
     return check + ' && ' + replace + ' || ' + append;
