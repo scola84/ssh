@@ -2,7 +2,7 @@ import { readFileSync } from 'fs';
 import sprintf from 'sprintf-js';
 
 export default function copy(source, target, options = {}) {
-  if (source[0] === '/') {
+  if (options.remote === true) {
     return `cp ${source} ${target}`;
   }
 
