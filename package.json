@@ -8,8 +8,10 @@
   "main": "./index.js",
   "jsnext:main": "./index.js",
   "dependencies": {
-    "@scola/worker": "^2.11.0",
+    "@scola/worker": "^2.13.2",
+    "escape-string-regexp": "^1.0.5",
     "lodash-es": "^4.17.11",
-    "ssh2": "^0.6.1"
+    "sprintf-js": "^1.1.2",
+    "ssh2": "^0.6.2"
   }
 }
