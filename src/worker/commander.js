@@ -61,6 +61,11 @@ export default class Commander extends Worker {
 
     command = this._quiet ? `( ${command} ) &> /dev/null` : command;
 
+    if (command === '') {
+      this.skip(box, data, callback);
+      return;
+    }
+
     this._bind(box, data, callback, command);
     this._write(box, data, callback, command);
   }
