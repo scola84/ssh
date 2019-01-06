@@ -7,7 +7,7 @@ import {
 import {
   chmod,
   chown,
-  copy,
+  cp,
   ctl,
   pkg,
   sed,
@@ -23,7 +23,7 @@ export {
 export {
   chmod,
   chown,
-  copy,
+  cp,
   ctl,
   pkg,
   sed,

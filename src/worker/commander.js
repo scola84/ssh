@@ -99,9 +99,9 @@ export default class Commander extends Worker {
 
   _answerSudo(box, data, callback, line) {
     if (line === 'Sorry, try again.') {
-      if (data.ssh.user.password) {
+      if (data.ssh.client.config.password) {
         this._error(box, data, callback,
-          new Error('Password on box is invalid'));
+          new Error('Password is invalid'));
       } else {
         this._answerTty(box, data, callback, line);
       }
@@ -110,7 +110,7 @@ export default class Commander extends Worker {
     }
 
     if (line.match(/^\[sudo\] password for .+:$/) !== null) {
-      const password = data.ssh.user.password;
+      const password = data.ssh.client.config.password;
 
       if (password) {
         this._write(box, data, callback, password, false);
@@ -208,7 +208,6 @@ export default class Commander extends Worker {
       this.log('info', box, data, callback, line);
     }
 
-    line = data.ssh.test === true ? '' : line;
     data.ssh.stream.write(line + '\n');
   }
 }
