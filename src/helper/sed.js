@@ -13,8 +13,14 @@ export default function sed(file, pattern, replacer, section) {
     let [ptn, rpl, scn] = item;
 
     if (typeof rpl === 'undefined') {
-      rpl = ptn;
-      ptn = '#\\{0,\\}' + escape(ptn);
+      if (ptn[0] === '#') {
+        rpl = '#\\1';
+        ptn = `#?(${escape(ptn.slice(1))})`;
+      } else {
+        rpl = ptn;
+        ptn = `#?${escape(ptn)}`;
+      }
+
       scn = null;
     }
 
@@ -37,10 +43,10 @@ export default function sed(file, pattern, replacer, section) {
     } else {
       check = `grep -E "^${ptn}$" ${file}`;
       replace = `sed -i -E "s/^${ptn}$/${rpl}/" ${file}`;
-      append = `sed -i -E "$ a ${rpl}" ${file}`;
+      append = rpl === '#\\1' ? '' : `sed -i -E "$ a ${rpl}" ${file}`;
     }
 
-    return check + ' && ' + replace + ' || ' + append;
+    return check + ' && ' + replace + (append ? ' || ' + append : '');
   });
 
   return items.join(' && ');
