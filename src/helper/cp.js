@@ -11,5 +11,5 @@ export default function copy(source, target, options = {}) {
   source = source.replace(/\$/g, '\\$');
   source = sprintf.sprintf(source, options);
 
-  return `printf "${source}" | tee ${target}`;
+  return `echo "${source}" | tee ${target}`;
 }
