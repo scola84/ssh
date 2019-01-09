@@ -1,24 +1,16 @@
 import escape from 'escape-string-regexp';
 
-export default function sed(file, pattern, replacer, section) {
-  let items = Array.isArray(pattern) ? pattern : [
-    [pattern, replacer, section]
-  ];
-
-  items = items.map((item) => {
-    if (Array.isArray(item) === false) {
-      throw new Error('Item is not an array');
-    }
-
-    let [ptn, rpl, scn] = item;
-
+export default function sed(file, rules, options = {}) {
+  rules = rules.map(([ptn, rpl, scn]) => {
     if (typeof rpl === 'undefined') {
       if (ptn[0] === '#') {
         rpl = '#\\1';
-        ptn = `#?(${escape(ptn.slice(1))})`;
+        ptn = options.escape ? escape(ptn.slice(1)) : ptn.slice(1);
+        ptn = `\\s*#?(${ptn})`;
       } else {
         rpl = ptn;
-        ptn = `#?${escape(ptn)}`;
+        ptn = options.escape ? escape(ptn) : ptn;
+        ptn = `\\s*#?${ptn}`;
       }
 
       scn = null;
@@ -49,5 +41,5 @@ export default function sed(file, pattern, replacer, section) {
     return check + ' && ' + replace + (append ? ' || ' + append : '');
   });
 
-  return items.join(' && ');
+  return rules.join(' && ');
 }
