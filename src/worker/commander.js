@@ -8,11 +8,13 @@ export default class Commander extends Worker {
 
     this._answers = null;
     this._command = null;
+    this._confirm = null;
     this._quiet = null;
     this._sudo = null;
 
     this.setAnswers(options.answers);
     this.setCommand(options.command);
+    this.setConfirm(options.confirm);
     this.setQuiet(options.quiet);
     this.setSudo(options.sudo);
   }
@@ -24,6 +26,11 @@ export default class Commander extends Worker {
 
   setCommand(value = '') {
     this._command = value;
+    return this;
+  }
+
+  setConfirm(value = false) {
+    this._confirm = value;
     return this;
   }
 
@@ -53,7 +60,7 @@ export default class Commander extends Worker {
 
     command = command
       .map((cmd) => {
-        return prefix +
+        return cmd && prefix +
           cmd.replace(/( [&|]+ )/g, '$1' + prefix);
       })
       .join(' && ')
@@ -64,6 +71,13 @@ export default class Commander extends Worker {
     if (command === '') {
       this.skip(box, data, callback);
       return;
+    }
+
+    if (this._confirm) {
+      if (box.yes !== true) {
+        this._createConfirm(box, data, callback, command);
+        return;
+      }
     }
 
     this._bind(box, data, callback, command);
@@ -88,7 +102,7 @@ export default class Commander extends Worker {
       box, data, line, command);
 
     if (answers === 'tty') {
-      this._answerTty(box, data, callback, line);
+      this._createTty(box, data, callback, line);
       return;
     }
 
@@ -103,7 +117,7 @@ export default class Commander extends Worker {
         this._error(box, data, callback,
           new Error('Password is invalid'));
       } else {
-        this._answerTty(box, data, callback, line);
+        this._createTty(box, data, callback, line);
       }
 
       return true;
@@ -115,7 +129,7 @@ export default class Commander extends Worker {
       if (password) {
         this._write(box, data, callback, password, false);
       } else {
-        this._answerTty(box, data, callback, line, false);
+        this._createTty(box, data, callback, line, false);
       }
 
       return true;
@@ -124,7 +138,21 @@ export default class Commander extends Worker {
     return false;
   }
 
-  _answerTty(box, data, callback, line, log) {
+  _createConfirm(box, data, callback, command) {
+    const question = 'Are you sure you want to ' +
+      this._description.toLowerCase() + '? [Y/n] ';
+
+    this._createQuestion(question, (answer) => {
+      if (answer === 'n') {
+        this.skip(box, data, callback);
+      } else {
+        this._bind(box, data, callback, command);
+        this._write(box, data, callback, command);
+      }
+    });
+  }
+
+  _createQuestion(question, callback) {
     let write = true;
 
     const output = new Writable({
@@ -143,13 +171,19 @@ export default class Commander extends Worker {
       terminal: true
     });
 
-    tty.question(line + ' ', (answer) => {
-      this._write(box, data, callback, answer, log);
+    tty.question(question, (answer) => {
+      callback(answer);
       tty.close();
-      console.log();
     });
 
-    write = line.match(/password/) === null;
+    write = question.match(/password/) === null;
+  }
+
+  _createTty(box, data, callback, line, log) {
+    this._createQuestion(line + ' ', (answer) => {
+      this._write(box, data, callback, answer, log);
+      console.log();
+    });
   }
 
   _bind(box, data, callback, command) {
