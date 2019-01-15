@@ -55,7 +55,7 @@ export default class Commander extends Worker {
     const prefix = data.ssh.sudo === true && this._sudo === true ?
       'sudo ' : '';
 
-    let command = this.resolve(this._command, box, data);
+    let command = this._command(box, data);
     command = Array.isArray(command) ? command : [command];
 
     command = command
