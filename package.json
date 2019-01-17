@@ -12,6 +12,6 @@
     "escape-string-regexp": "^1.0.5",
     "lodash-es": "^4.17.11",
     "sprintf-js": "^1.1.2",
-    "ssh2": "^0.6.2"
+    "ssh2": "^0.8.0"
   }
 }
