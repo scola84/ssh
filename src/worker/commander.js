@@ -9,12 +9,14 @@ export default class Commander extends Worker {
     this._answers = null;
     this._command = null;
     this._confirm = null;
+    this._force = null;
     this._quiet = null;
     this._sudo = null;
 
     this.setAnswers(options.answers);
     this.setCommand(options.command);
     this.setConfirm(options.confirm);
+    this.setForce(options.force);
     this.setQuiet(options.quiet);
     this.setSudo(options.sudo);
   }
@@ -31,6 +33,11 @@ export default class Commander extends Worker {
 
   setConfirm(value = false) {
     this._confirm = value;
+    return this;
+  }
+
+  setForce(value = false) {
+    this._force = value;
     return this;
   }
 
@@ -88,7 +95,9 @@ export default class Commander extends Worker {
     const description = this.resolve(this._description,
       box, data);
 
-    const regexp = new RegExp(box.commanders, 'i');
+    const regexp = this._force ?
+      '.*' :
+      new RegExp(box.commanders, 'i');
 
     if (description.match(regexp) === null) {
       return false;
