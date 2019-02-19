@@ -9,6 +9,7 @@ import {
   chown,
   cp,
   ctl,
+  key,
   pkg,
   sed,
   ufw
@@ -25,6 +26,7 @@ export {
   chown,
   cp,
   ctl,
+  key,
   pkg,
   sed,
   ufw
