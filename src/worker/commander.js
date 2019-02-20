@@ -10,6 +10,7 @@ export default class Commander extends Worker {
     this._command = null;
     this._confirm = null;
     this._force = null;
+    this._poll = null;
     this._quiet = null;
     this._sudo = null;
 
@@ -17,6 +18,7 @@ export default class Commander extends Worker {
     this.setCommand(options.command);
     this.setConfirm(options.confirm);
     this.setForce(options.force);
+    this.setPoll(options.poll);
     this.setQuiet(options.quiet);
     this.setSudo(options.sudo);
   }
@@ -38,6 +40,11 @@ export default class Commander extends Worker {
 
   setForce(value = false) {
     this._force = value;
+    return this;
+  }
+
+  setPoll(value = null) {
+    this._poll = value;
     return this;
   }
 
@@ -147,6 +154,32 @@ export default class Commander extends Worker {
     return false;
   }
 
+  _bind(box, data, callback, command) {
+    data.ssh.lines = [];
+
+    data.ssh.stream.on('data', (line) => {
+      this._read(box, data, callback, command, line);
+    });
+  }
+
+  _checkPoll(box, data, callback) {
+    if (this._poll === null) {
+      return true;
+    }
+
+    const poll = this._poll(box, data, data.ssh.lines);
+
+    if (poll === true) {
+      return true;
+    }
+
+    setTimeout(() => {
+      this.act(box, data, callback);
+    }, poll);
+
+    return false;
+  }
+
   _createConfirm(box, data, callback, command) {
     const question = 'Are you sure you want to ' +
       this._description.toLowerCase() + '? [Y/n] ';
@@ -195,23 +228,22 @@ export default class Commander extends Worker {
     });
   }
 
-  _bind(box, data, callback, command) {
-    data.ssh.lines = [];
-
-    data.ssh.stream.on('data', (line) => {
-      this._read(box, data, callback, command, line);
-    });
-  }
-
   _error(box, data, callback, error) {
     error.data = data;
     this.fail(box, error, callback);
   }
 
   _next(box, data, callback) {
+    this._unbind(box, data);
+
+    const pass = this._checkPoll(box, data, callback);
+
+    if (pass === false) {
+      return;
+    }
+
     data = this.merge(box, data, data.ssh.lines);
 
-    this._unbind(box, data);
     this.pass(box, data, callback);
   }
 
