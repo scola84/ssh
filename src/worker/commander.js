@@ -80,12 +80,12 @@ export default class Commander extends Worker {
       .join(' && ')
       .trim();
 
-    command = this._quiet ? `( ${command} ) &> /dev/null` : command;
-
     if (command === '') {
       this.skip(box, data, callback);
       return;
     }
+
+    command = this._quiet ? `( ${command} ) &> /dev/null` : command;
 
     if (this._confirm) {
       if (box.yes !== true) {
