@@ -102,12 +102,14 @@ export default class Commander extends Worker {
     const description = this.resolve(this._description,
       box, data);
 
-    const regexp = this._force ?
-      '.*' :
-      new RegExp(box.commanders, 'i');
+    if (typeof description === 'string') {
+      const regexp = this._force ?
+        '.*' :
+        new RegExp(box.commanders, 'i');
 
-    if (description.match(regexp) === null) {
-      return false;
+      if (description.match(regexp) === null) {
+        return false;
+      }
     }
 
     return super.decide(box, data);
