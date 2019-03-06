@@ -1,16 +1,22 @@
 import { execFile } from 'child_process';
-import defaults from 'lodash-es/defaultsDeep';
 import Connector from './connector';
 
 export default class Transferer extends Connector {
   constructor(options = {}) {
     super(options);
 
+    this._client = null;
     this._local = null;
     this._remote = null;
 
+    this.setClient(options.client);
     this.setLocal(options.local);
     this.setRemote(options.remote);
+  }
+
+  setClient(value = null) {
+    this._client = value;
+    return this;
   }
 
   setLocal(value = '') {
@@ -25,18 +31,12 @@ export default class Transferer extends Connector {
 
   act(box, data, callback) {
     data = this.filter(box, data);
-    let options = this._options;
 
-    if (typeof options === 'function') {
-      options = options(box, data);
+    let client = this._client;
+
+    if (typeof client === 'function') {
+      client = client(box, data);
     }
-
-    options = defaults({
-      hostname: data.ssh.client && data.ssh.client.config.host,
-      key: data.ssh.client && data.ssh.client.config.key,
-      port: data.ssh.client && data.ssh.client.config.port,
-      username: data.ssh.client && data.ssh.client.config.username
-    }, options);
 
     let local = this._local;
 
@@ -50,14 +50,22 @@ export default class Transferer extends Connector {
       remote = remote(box, data);
     }
 
+    remote = `${client.username}@${client.hostname}:${remote}`;
+
     const args = [
       '-i',
-      options.key,
+      client.key,
       '-P',
-      options.port,
-      local,
-      `${options.username}@${options.hostname}:${remote}`
+      client.port || 22
     ];
+
+    if (client.action === 'read') {
+      args[args.length] = remote;
+      args[args.length] = local;
+    } else if (client.action === 'write') {
+      args[args.length] = local;
+      args[args.length] = remote;
+    }
 
     execFile('scp', args, (error, result) => {
       if (error) {
@@ -67,7 +75,7 @@ export default class Transferer extends Connector {
 
       data = this.merge(box, data, result);
 
-      this._logDescription(box, data, true);
+      this.log('info', box, data, callback);
       this.pass(box, data, callback);
     });
   }
