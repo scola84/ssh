@@ -1,6 +1,6 @@
 {
   "name": "@scola/ssh",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "SSH",
   "repository": "github:scola84/ssh",
   "author": "M.C. van den Boogaart <scola@kvdb.name>",
