@@ -53,6 +53,7 @@ export default class Transferer extends Connector {
     remote = `${client.username}@${client.hostname}:${remote}`;
 
     const args = [
+      '-q',
       '-i',
       client.key,
       '-P',
