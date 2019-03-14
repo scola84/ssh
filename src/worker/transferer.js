@@ -54,6 +54,8 @@ export default class Transferer extends Connector {
 
     const args = [
       '-q',
+      '-o',
+      'StrictHostKeyChecking=no',
       '-i',
       client.key,
       '-P',
