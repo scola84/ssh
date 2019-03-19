@@ -17,6 +17,7 @@ export default function sed(file, rules, options = {}) {
     }
 
     ptn = ptn.replace(/"/g, '\\\\\\"');
+    ptn = ptn.replace(/\//g, '\\\\/');
     ptn = ptn.replace(/\\\?/g, '[?]');
     rpl = rpl.replace(/"/g, '\\\\\\"');
     rpl = rpl.replace(/\//g, '\\\\/');
