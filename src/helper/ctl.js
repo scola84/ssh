@@ -1,3 +1,3 @@
-export default function ctl(command, name) {
+export default function ctl(command, name = '') {
   return `systemctl ${command} ${name}`;
 }
