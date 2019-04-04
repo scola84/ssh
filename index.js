@@ -11,6 +11,7 @@ import {
   ctl,
   key,
   pkg,
+  rm,
   sed,
   ufw
 } from './src/helper';
@@ -28,6 +29,7 @@ export {
   ctl,
   key,
   pkg,
+  rm,
   sed,
   ufw
 };
