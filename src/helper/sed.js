@@ -16,11 +16,12 @@ export default function sed(file, rules, options = {}) {
       scn = null;
     }
 
+    ptn = options.escape ? ptn.replace(/\//g, '\\\\/') : ptn;
     ptn = ptn.replace(/"/g, '\\\\\\"');
-    ptn = ptn.replace(/\//g, '\\\\/');
     ptn = ptn.replace(/\\\?/g, '[?]');
-    rpl = rpl.replace(/"/g, '\\\\\\"');
+
     rpl = rpl.replace(/\//g, '\\\\/');
+    rpl = rpl.replace(/"/g, '\\\\\\"');
 
     let check = '';
     let replace = '';
